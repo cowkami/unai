@@ -1,13 +1,15 @@
-use serde::{Deserialize, Serialize};
+pub mod schema;
+
+use schema::{CompletionsRequest, CompletionsResponse, Message};
 use std::env;
 
 #[derive(Clone)]
-pub struct OpenAiApi {
+pub struct Gpt {
     api_key: String,
     project_id: String,
 }
 
-impl OpenAiApi {
+impl Gpt {
     pub fn new() -> Result<Self, &'static str> {
         let api_key =
             env::var("OPENAI_API_KEY").expect("Please set the OPENAI_API_KEY environment variable");
@@ -30,53 +32,14 @@ impl OpenAiApi {
                     role: "user".to_string(),
                     content: chat.to_string(),
                 }],
+                temperature: Some(0.7),
             })
             .send()
             .await?;
 
         let response = CompletionsResponse::from(response.json().await?);
-        println!("{:#?}", response);
+        let text = response.choices[0].message.content.clone();
 
-        Ok("ok".to_string())
+        Ok(text)
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CompletionsRequest {
-    pub model: String,
-    pub messages: Vec<Message>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Message {
-    pub role: String,
-    pub content: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CompletionsResponse {
-    pub id: String,
-    pub object: String,
-    pub created: i64,
-    pub model: String,
-    pub system_fingerprint: String,
-    pub choices: Vec<Choice>,
-    pub usage: Usage,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Choice {
-    pub index: i64,
-    pub message: Message,
-    pub logprobs: Option<serde_json::Value>,
-    pub finish_reason: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Usage {
-    pub prompt_tokens: i64,
-    pub completion_tokens: i64,
-    pub total_tokens: i64,
 }

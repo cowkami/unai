@@ -1,13 +1,13 @@
+mod gpt;
 mod line;
-mod openai;
 
 use axum::{
     extract::Extension,
     routing::{get, post},
     Json, Router,
 };
+use gpt::Gpt;
 use line::EventType;
-use openai::OpenAiApi;
 
 #[tokio::main]
 async fn main() -> Result<(), &'static str> {
@@ -36,12 +36,12 @@ async fn main() -> Result<(), &'static str> {
 
 #[derive(Clone)]
 struct AppContext {
-    llm_client: OpenAiApi,
+    llm_client: Gpt,
 }
 
 impl AppContext {
     fn new() -> Result<Self, &'static str> {
-        let llm_client = OpenAiApi::new().expect("Failed to initialize OpenAI API client");
+        let llm_client = Gpt::new().expect("Failed to initialize OpenAI API client");
         Ok(Self { llm_client })
     }
 }
@@ -68,5 +68,12 @@ async fn reply(
         message_event.message.text,
     );
 
-    Ok("hello".to_string())
+    // send chat
+    let response = app_context
+        .llm_client
+        .send_chat(&message_event.message.text)
+        .await
+        .expect("Failed to send chat to OpenAI API");
+
+    Ok(response)
 }
