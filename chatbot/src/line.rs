@@ -1,49 +1,45 @@
-use serde::{Deserialize, Serialize};
+pub mod schema;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct WebhookEvent {
-    pub destination: String,
-    pub events: Vec<Event>,
+use schema::{Message, ReplyMessage};
+
+#[derive(Clone)]
+pub struct Line {
+    channel_access_token: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Event {
-    pub r#type: EventType,
-    pub message: Message,
-    pub timestamp: i64,
-    pub source: Source,
-    pub reply_token: String,
-    pub mode: String,
-    pub webhook_event_id: String,
-    pub delivery_context: DeliveryContext,
-}
+impl Line {
+    pub fn new() -> Result<Self, &'static str> {
+        let channel_access_token = std::env::var("LINE_CHANNEL_ACCESS_TOKEN")
+            .expect("Please set the LINE_CHANNEL_ACCESS_TOKEN environment variable");
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub enum EventType {
-    Message,
-}
+        Ok(Self {
+            channel_access_token,
+        })
+    }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Message {
-    pub id: String,
-    pub r#type: String,
-    pub text: String,
-    pub quote_token: String,
-}
+    pub async fn reply(&self, chat: &str, reply_token: String) -> Result<(), reqwest::Error> {
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.line.me/v2/bot/message/reply")
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.channel_access_token),
+            )
+            .json(&ReplyMessage {
+                reply_token,
+                messages: vec![Message {
+                    r#type: "text".to_string(),
+                    text: chat.to_string(),
+                    id: None,
+                    quote_token: None,
+                }],
+            })
+            .send()
+            .await?;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Source {
-    pub r#type: String,
-    pub user_id: String,
-}
+        log::trace!("Received reply API response: {:#?}", response);
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct DeliveryContext {
-    pub is_redelivery: bool,
+        Ok(())
+    }
 }

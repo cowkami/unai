@@ -7,7 +7,7 @@ use axum::{
     Json, Router,
 };
 use gpt::Gpt;
-use line::EventType;
+use line::{schema::EventType, Line};
 
 #[tokio::main]
 async fn main() -> Result<(), &'static str> {
@@ -20,7 +20,7 @@ async fn main() -> Result<(), &'static str> {
     // build our application with a single route
     let app = Router::new()
         .route("/", get(|| async { "Welcome to UNAI API!" }))
-        .route("/reply", post(reply))
+        .route("/conversation", post(conversation))
         .layer(Extension(app_context));
 
     // run our app with hyper, listening globally on port 8080
@@ -37,18 +37,23 @@ async fn main() -> Result<(), &'static str> {
 #[derive(Clone)]
 struct AppContext {
     llm_client: Gpt,
+    message_client: Line,
 }
 
 impl AppContext {
     fn new() -> Result<Self, &'static str> {
         let llm_client = Gpt::new().expect("Failed to initialize OpenAI API client");
-        Ok(Self { llm_client })
+        let message_client = Line::new().expect("Failed to initialize LINE client");
+        Ok(Self {
+            llm_client,
+            message_client,
+        })
     }
 }
 
-async fn reply(
+async fn conversation(
     Extension(app_context): Extension<AppContext>,
-    Json(payload): Json<line::WebhookEvent>,
+    Json(payload): Json<line::schema::WebhookEvent>,
 ) -> Result<String, &'static str> {
     log::trace!("Received payload: {:#?}", payload);
 
@@ -57,11 +62,11 @@ async fn reply(
         .events
         .iter()
         .filter(|event| matches!(event.r#type, EventType::Message))
-        .next()
+        .next() // get the first message event
         .expect("No message event found");
 
     log::info!(
-        "Received message: \n\
+        "User message:\n\
         user_id: {}\n\
         text: {}",
         message_event.source.user_id,
@@ -69,11 +74,24 @@ async fn reply(
     );
 
     // send chat
-    let response = app_context
+    let bot_response = app_context
         .llm_client
         .send_chat(&message_event.message.text)
         .await
         .expect("Failed to send chat to OpenAI API");
 
-    Ok(response)
+    log::info!(
+        "Bot message: \n\
+        text: {}",
+        bot_response,
+    );
+
+    // reply chat to LINE
+    app_context
+        .message_client
+        .reply(bot_response.as_str(), message_event.reply_token.clone())
+        .await
+        .expect("Failed to send chat to LINE API");
+
+    Ok("success".to_string())
 }
