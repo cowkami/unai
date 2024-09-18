@@ -57,41 +57,43 @@ async fn conversation(
 ) -> Result<String, &'static str> {
     log::trace!("Received payload: {:#?}", payload);
 
-    // filter out message events
-    let message_event = payload
-        .events
-        .iter()
-        .filter(|event| matches!(event.r#type, EventType::Message))
-        .next() // get the first message event
-        .expect("No message event found");
+    tokio::spawn(async move {
+        // filter out message events
+        let message_event = payload
+            .events
+            .iter()
+            .filter(|event| matches!(event.r#type, EventType::Message))
+            .next() // get the first message event
+            .expect("No message event found");
 
-    log::info!(
-        "User message:\n\
+        log::info!(
+            "User message:\n\
         user_id: {}\n\
         text: {}",
-        message_event.source.user_id,
-        message_event.message.text,
-    );
+            message_event.source.user_id,
+            message_event.message.text,
+        );
 
-    // send chat
-    let bot_response = app_context
-        .llm_client
-        .send_chat(&message_event.message.text)
-        .await
-        .expect("Failed to send chat to OpenAI API");
+        // send chat
+        let bot_response = app_context
+            .llm_client
+            .send_chat(&message_event.message.text)
+            .await
+            .expect("Failed to send chat to OpenAI API");
 
-    log::info!(
-        "Bot message: \n\
+        log::info!(
+            "Bot message: \n\
         text: {}",
-        bot_response,
-    );
+            bot_response,
+        );
 
-    // reply chat to LINE
-    app_context
-        .message_client
-        .reply(bot_response.as_str(), message_event.reply_token.clone())
-        .await
-        .expect("Failed to send chat to LINE API");
+        // reply chat to LINE
+        app_context
+            .message_client
+            .reply(bot_response.as_str(), message_event.reply_token.clone())
+            .await
+            .expect("Failed to send chat to LINE API");
+    });
 
     Ok("success".to_string())
 }
