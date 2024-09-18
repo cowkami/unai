@@ -74,6 +74,13 @@ async fn conversation(
             message_event.message.text,
         );
 
+        // show loading to LINE
+        app_context
+            .message_client
+            .show_loading()
+            .await
+            .expect("Failed to show loading");
+
         // send chat
         let bot_response = app_context
             .llm_client

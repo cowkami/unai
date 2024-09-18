@@ -54,3 +54,10 @@ pub struct Source {
 pub struct DeliveryContext {
     pub is_redelivery: bool,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadingStart {
+    pub chat_id: String,
+    pub loading_seconds: i64,
+}
