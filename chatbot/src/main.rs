@@ -1,13 +1,15 @@
+mod context;
 mod gpt;
 mod line;
 
 use axum::{
     extract::Extension,
+    http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
-use gpt::Gpt;
-use line::{schema::EventType, Line};
+use context::AppContext;
+use line::schema::EventType;
 
 #[tokio::main]
 async fn main() -> Result<(), &'static str> {
@@ -34,27 +36,10 @@ async fn main() -> Result<(), &'static str> {
     Ok(())
 }
 
-#[derive(Clone)]
-struct AppContext {
-    llm_client: Gpt,
-    message_client: Line,
-}
-
-impl AppContext {
-    fn new() -> Result<Self, &'static str> {
-        let llm_client = Gpt::new().expect("Failed to initialize OpenAI API client");
-        let message_client = Line::new().expect("Failed to initialize LINE client");
-        Ok(Self {
-            llm_client,
-            message_client,
-        })
-    }
-}
-
 async fn conversation(
     Extension(app_context): Extension<AppContext>,
     Json(payload): Json<line::schema::WebhookEvent>,
-) -> Result<String, &'static str> {
+) -> Result<StatusCode, &'static str> {
     log::trace!("Received payload: {:#?}", payload);
 
     tokio::spawn(async move {
@@ -102,5 +87,5 @@ async fn conversation(
             .expect("Failed to send chat to LINE API");
     });
 
-    Ok("success".to_string())
+    Ok(StatusCode::OK)
 }
