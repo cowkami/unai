@@ -1,7 +1,6 @@
 mod app;
-mod gpt;
-mod line;
 
+use api_client::line;
 use app::App;
 use axum::{
     extract::Extension,
@@ -9,7 +8,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use line::schema::EventType;
 
 #[tokio::main]
 async fn main() -> Result<(), &'static str> {
@@ -48,7 +46,7 @@ async fn conversation(
         let message_event = payload
             .events
             .iter()
-            .filter(|event| matches!(event.r#type, EventType::Message))
+            .filter(|event| matches!(event.r#type, line::schema::EventType::Message))
             .next() // get the first message event
             .expect("No message event found");
 

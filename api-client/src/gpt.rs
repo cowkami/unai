@@ -39,8 +39,6 @@ impl Gpt {
 
         let response: CompletionsResponse = response.json().await?;
 
-        log::trace!("Received chat API response: {:#?}", response);
-
         let text = response.choices[0].message.content.clone();
         Ok(text)
     }

@@ -1,4 +1,4 @@
-use unai::{gpt::Gpt, line::Line};
+use api_client::{gpt::Gpt, line::Line};
 
 #[derive(Clone)]
 pub struct App {

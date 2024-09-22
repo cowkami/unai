@@ -42,7 +42,7 @@ impl Line {
 
     pub async fn reply(&self, chat: &str, reply_token: String) -> Result<(), reqwest::Error> {
         let client = reqwest::Client::new();
-        let response = client
+        client
             .post("https://api.line.me/v2/bot/message/reply")
             .header("Content-Type", "application/json")
             .header(
@@ -60,8 +60,6 @@ impl Line {
             })
             .send()
             .await?;
-
-        log::trace!("Received reply API response: {:#?}", response);
 
         Ok(())
     }

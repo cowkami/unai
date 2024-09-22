@@ -1,4 +1,4 @@
-use unai::gpt::Gpt;
+use api_client::gpt::Gpt;
 
 #[tokio::main]
 async fn main() {

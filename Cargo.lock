@@ -76,6 +76,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "api-client"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1077,10 +1087,10 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 name = "unai"
 version = "0.1.0"
 dependencies = [
+ "api-client",
  "axum",
  "env_logger",
  "log",
- "reqwest",
  "serde",
  "serde_json",
  "tokio",
