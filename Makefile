@@ -5,7 +5,7 @@ run: build
 	@docker compose up
 
 push: build
-	@docker tag unai-chatbot:latest asia-northeast1-docker.pkg.dev/unseo-chatbot/unai/chat-server:latest
+	@docker tag unai-server:latest asia-northeast1-docker.pkg.dev/unseo-chatbot/unai/chat-server:latest
 	@docker push asia-northeast1-docker.pkg.dev/unseo-chatbot/unai/chat-server:latest
 
 deploy: push
