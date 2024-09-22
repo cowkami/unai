@@ -1,9 +1,6 @@
 FROM rust:1.80.1-slim as builder
 WORKDIR /app
-COPY server server
-COPY api-client api-client
-COPY Cargo.toml .
-COPY Cargo.lock .
+COPY . .
 RUN cargo build --release
 
 FROM debian:stable-slim
