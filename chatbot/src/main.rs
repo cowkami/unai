@@ -1,14 +1,14 @@
-mod context;
+mod app;
 mod gpt;
 mod line;
 
+use app::App;
 use axum::{
     extract::Extension,
     http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
-use context::AppContext;
 use line::schema::EventType;
 
 #[tokio::main]
@@ -16,20 +16,20 @@ async fn main() -> Result<(), &'static str> {
     // initialize logger
     env_logger::init();
 
-    // initialize app context
-    let app_context = AppContext::new().expect("Failed to initialize app context");
+    // initialize app
+    let app = App::new().expect("Failed to initialize app");
 
     // build our application with a single route
-    let app = Router::new()
+    let router = Router::new()
         .route("/", get(|| async { "Welcome to UNAI API!" }))
         .route("/conversation", post(conversation))
-        .layer(Extension(app_context));
+        .layer(Extension(app));
 
     // run our app with hyper, listening globally on port 8080
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await
         .expect("Failed to bind port");
-    axum::serve(listener, app)
+    axum::serve(listener, router)
         .await
         .expect("Server failed to start");
 
@@ -37,7 +37,7 @@ async fn main() -> Result<(), &'static str> {
 }
 
 async fn conversation(
-    Extension(app_context): Extension<AppContext>,
+    Extension(app): Extension<App>,
     Json(payload): Json<line::schema::WebhookEvent>,
 ) -> Result<StatusCode, &'static str> {
     log::trace!("Received payload: {:#?}", payload);
@@ -60,14 +60,13 @@ async fn conversation(
         );
 
         // show loading to LINE
-        app_context
-            .message_client
+        app.message_client
             .show_loading()
             .await
             .expect("Failed to show loading");
 
         // send chat
-        let bot_response = app_context
+        let bot_response = app
             .llm_client
             .send_chat(&message_event.message.text)
             .await
@@ -80,8 +79,7 @@ async fn conversation(
         );
 
         // reply chat to LINE
-        app_context
-            .message_client
+        app.message_client
             .reply(bot_response.as_str(), message_event.reply_token.clone())
             .await
             .expect("Failed to send chat to LINE API");
