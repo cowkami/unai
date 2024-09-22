@@ -29,6 +29,7 @@ async fn main() -> Result<(), &'static str> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
         .await
         .expect("Failed to bind port");
+
     axum::serve(listener, router)
         .await
         .expect("Server failed to start");
