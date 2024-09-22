@@ -1,6 +1,10 @@
 pub mod schema;
 
-use schema::{LoadingStart, Message, ReplyMessage};
+use domain::{
+    message::{Actor, Message},
+    user::User,
+};
+use schema::{Event, EventType, LoadingStart, Message as LineMessage, ReplyMessage, WebhookEvent};
 
 #[derive(Clone)]
 pub struct Line {
@@ -19,6 +23,31 @@ impl Line {
             channel_access_token,
             bot_user_id,
         })
+    }
+
+    pub fn get_user_message(&self, payload: WebhookEvent) -> Result<Message, &'static str> {
+        let message_event = payload
+            .events
+            .into_iter()
+            .filter(|event| matches!(event.r#type, EventType::Message))
+            .next()
+            .expect("No message event found");
+
+        // extract message from event
+        let message = self.extract_message(message_event);
+
+        Ok(message)
+    }
+
+    fn extract_message(&self, event: Event) -> Message {
+        Message {
+            from: Actor::User(User {
+                id: event.source.user_id,
+            }),
+            to: Actor::Bot,
+            text: event.message.text,
+            reply_token: Some(event.reply_token),
+        }
     }
 
     pub async fn show_loading(&self) -> Result<(), reqwest::Error> {
@@ -40,7 +69,7 @@ impl Line {
         Ok(())
     }
 
-    pub async fn reply(&self, chat: &str, reply_token: String) -> Result<(), reqwest::Error> {
+    pub async fn reply(&self, chat: String, reply_token: String) -> Result<(), reqwest::Error> {
         let client = reqwest::Client::new();
         client
             .post("https://api.line.me/v2/bot/message/reply")
@@ -51,9 +80,9 @@ impl Line {
             )
             .json(&ReplyMessage {
                 reply_token,
-                messages: vec![Message {
+                messages: vec![LineMessage {
                     r#type: "text".to_string(),
-                    text: chat.to_string(),
+                    text: chat,
                     id: None,
                     quote_token: None,
                 }],

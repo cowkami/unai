@@ -42,46 +42,9 @@ async fn conversation(
     log::trace!("Received payload: {:#?}", payload);
 
     tokio::spawn(async move {
-        // filter out message events
-        let message_event = payload
-            .events
-            .iter()
-            .filter(|event| matches!(event.r#type, line::schema::EventType::Message))
-            .next() // get the first message event
-            .expect("No message event found");
-
-        log::info!(
-            "User message:\n\
-        user_id: {}\n\
-        text: {}",
-            message_event.source.user_id,
-            message_event.message.text,
-        );
-
-        // show loading to LINE
-        app.message_client
-            .show_loading()
+        app.conversation(payload)
             .await
-            .expect("Failed to show loading");
-
-        // send chat
-        let bot_response = app
-            .llm_client
-            .send_chat(&message_event.message.text)
-            .await
-            .expect("Failed to send chat to OpenAI API");
-
-        log::info!(
-            "Bot message: \n\
-        text: {}",
-            bot_response,
-        );
-
-        // reply chat to LINE
-        app.message_client
-            .reply(bot_response.as_str(), message_event.reply_token.clone())
-            .await
-            .expect("Failed to send chat to LINE API");
+            .expect("Failed to process conversation");
     });
 
     Ok(StatusCode::OK)

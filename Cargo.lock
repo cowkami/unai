@@ -79,6 +79,7 @@ dependencies = [
 name = "api-client"
 version = "0.1.0"
 dependencies = [
+ "domain",
  "reqwest",
  "serde",
  "serde_json",
@@ -216,6 +217,10 @@ name = "colorchoice"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3fd119d74b830634cea2a0f58bbd0d54540518a14397557951e79340abc28c0"
+
+[[package]]
+name = "domain"
+version = "0.1.0"
 
 [[package]]
 name = "env_filter"
@@ -878,6 +883,7 @@ version = "0.1.0"
 dependencies = [
  "api-client",
  "axum",
+ "domain",
  "env_logger",
  "log",
  "serde",

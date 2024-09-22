@@ -21,7 +21,7 @@ impl Gpt {
         })
     }
 
-    pub async fn send_chat(&self, chat: &str) -> Result<String, reqwest::Error> {
+    pub async fn chat(&self, chat: String) -> Result<String, reqwest::Error> {
         let client = reqwest::Client::new();
         let response = client
             .post("https://api.openai.com/v1/chat/completions")
@@ -30,7 +30,7 @@ impl Gpt {
                 model: "gpt-4o".to_string(),
                 messages: vec![Message {
                     role: "user".to_string(),
-                    content: chat.to_string(),
+                    content: chat,
                 }],
                 temperature: Some(0.7),
             })
