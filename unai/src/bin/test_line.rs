@@ -1,4 +1,4 @@
-use chatbot::line::Line;
+use unai::line::Line;
 
 #[tokio::main]
 async fn main() {

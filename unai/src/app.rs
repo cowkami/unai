@@ -1,4 +1,4 @@
-use chatbot::{gpt::Gpt, line::Line};
+use unai::{gpt::Gpt, line::Line};
 
 #[derive(Clone)]
 pub struct App {

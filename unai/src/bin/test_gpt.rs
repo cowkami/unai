@@ -1,4 +1,4 @@
-use chatbot::gpt::Gpt;
+use unai::gpt::Gpt;
 
 #[tokio::main]
 async fn main() {
