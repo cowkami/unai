@@ -32,15 +32,12 @@ impl Gpt {
         response.json().await
     }
 
-    pub async fn generate_image(
-        &self,
-        prompt: String,
-    ) -> Result<GenerateImageResponse, reqwest::Error> {
+    pub async fn generate_image(&self, prompt: String) -> Result<Vec<String>, reqwest::Error> {
         let request = GenerateImageRequest {
             model: "dall-e-2".to_string(),
             prompt,
-            n: 2,
-            size: "1024x1024".to_string(),
+            n: 1,
+            size: "256x256".to_string(),
             response_format: Some(GenImageResponseFormat::B64Json),
         };
         let client = reqwest::Client::new();
@@ -51,7 +48,14 @@ impl Gpt {
             .send()
             .await?;
 
-        response.json().await
+        let response: GenerateImageResponse = response.json().await?;
+        let images: Vec<String> = response
+            .data
+            .into_iter()
+            .map(|image| image.b64_json)
+            .collect();
+
+        Ok(images)
     }
 
     pub async fn chat(&self, chat: String) -> Result<String, reqwest::Error> {
