@@ -28,11 +28,20 @@ impl App {
 
         log::info!("User message: {:#?}", user_message);
 
-        // show loading to LINE
+        // show loading to user
         self.message_client
             .show_loading()
             .await
             .expect("Failed to show loading");
+
+        // detect user purpose
+        let user_demand = self
+            .llm_client
+            .detect_demand(user_message.text.clone())
+            .await
+            .expect("Failed to detect user demand");
+
+        println!("User demand: {:#?}", user_demand);
 
         // send chat
         let bot_response = self
@@ -41,11 +50,7 @@ impl App {
             .await
             .expect("Failed to send chat to OpenAI API");
 
-        log::info!(
-            "Bot message: \n\
-        text: {}",
-            bot_response,
-        );
+        log::info!("Bot message: {:#?}", bot_response);
 
         // reply chat to LINE
         self.message_client

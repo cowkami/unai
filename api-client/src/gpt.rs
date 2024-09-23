@@ -1,45 +1,93 @@
 pub mod schema;
 
-use schema::{CompletionsRequest, CompletionsResponse, Message};
+use domain::user::UserDemand;
+use schema::*;
+use serde_json::json;
 use std::env;
 
 #[derive(Clone)]
 pub struct Gpt {
     api_key: String,
-    project_id: String,
 }
 
 impl Gpt {
     pub fn new() -> Result<Self, &'static str> {
         let api_key =
             env::var("OPENAI_API_KEY").expect("Please set the OPENAI_API_KEY environment variable");
-        let project_id = env::var("OPENAI_PROJECT_ID")
-            .expect("Please set the OPENAI_PROJECT_ID environment variable");
-        Ok(Self {
-            api_key,
-            project_id,
-        })
+        Ok(Self { api_key })
     }
 
-    pub async fn chat(&self, chat: String) -> Result<String, reqwest::Error> {
+    pub async fn completions(
+        &self,
+        request: CompletionsRequest,
+    ) -> Result<CompletionsResponse, reqwest::Error> {
         let client = reqwest::Client::new();
         let response = client
             .post("https://api.openai.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
-            .json(&CompletionsRequest {
-                model: "gpt-4o".to_string(),
-                messages: vec![Message {
-                    role: "user".to_string(),
-                    content: chat,
-                }],
-                temperature: Some(0.7),
-            })
+            .json(&request)
             .send()
             .await?;
 
-        let response: CompletionsResponse = response.json().await?;
+        response.json().await
+    }
+
+    pub async fn chat(&self, chat: String) -> Result<String, reqwest::Error> {
+        let request = CompletionsRequest {
+            model: "gpt-4o".to_string(),
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: chat,
+            }],
+            temperature: Some(0.7),
+            response_format: None,
+        };
+        let response = self.completions(request).await?;
 
         let text = response.choices[0].message.content.clone();
         Ok(text)
+    }
+
+    pub async fn detect_demand(&self, chat: String) -> Result<UserDemand, reqwest::Error> {
+        let response_format = ResponseFormat::new(
+            "user_demand".to_string(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "user_demand": {
+                        "type": "string",
+                        "enum": ["Chat", "CreateImage"],
+                    }
+                },
+                "required": ["user_demand"],
+                "additionalProperties": false,
+            }),
+        );
+        let request = CompletionsRequest {
+            model: "gpt-4o-mini".to_string(),
+            messages: vec![
+                Message {
+                    role: "system".to_string(),
+                    content: "You are an expert at detecting user demand. \
+                        Choose one appropriate label as the user demands from the following options:\n\
+                        - Chat\n\
+                        - CreateImage"
+                        .to_string(),
+                },
+                Message {
+                    role: "user".to_string(),
+                    content: chat,
+                },
+            ],
+            temperature: Some(0.0),
+            response_format: Some(response_format),
+        };
+
+        let response = self.completions(request).await?;
+        let content = response.choices[0].message.content.clone();
+        let user_demand: schema::UserDemand = serde_json::from_str(&content).unwrap();
+        let user_demand = UserDemand::try_from(user_demand.user_demand).unwrap();
+
+        Ok(user_demand)
     }
 }
