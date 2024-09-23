@@ -70,3 +70,30 @@ impl ResponseFormat {
 pub struct UserDemand {
     pub user_demand: String,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GenerateImageRequest {
+    pub model: String,
+    pub prompt: String,
+    pub n: i64,
+    pub size: String,
+    pub response_format: Option<GenImageResponseFormat>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum GenImageResponseFormat {
+    Url,
+    B64Json,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GenerateImageResponse {
+    pub created: i64,
+    pub data: Vec<Image>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Image {
+    pub b64_json: String,
+}

@@ -32,6 +32,28 @@ impl Gpt {
         response.json().await
     }
 
+    pub async fn generate_image(
+        &self,
+        prompt: String,
+    ) -> Result<GenerateImageResponse, reqwest::Error> {
+        let request = GenerateImageRequest {
+            model: "dall-e-2".to_string(),
+            prompt,
+            n: 2,
+            size: "1024x1024".to_string(),
+            response_format: Some(GenImageResponseFormat::B64Json),
+        };
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.openai.com/v1/images/generations")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&request)
+            .send()
+            .await?;
+
+        response.json().await
+    }
+
     pub async fn chat(&self, chat: String) -> Result<String, reqwest::Error> {
         let request = CompletionsRequest {
             model: "gpt-4o".to_string(),

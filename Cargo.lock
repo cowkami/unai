@@ -883,6 +883,7 @@ version = "0.1.0"
 dependencies = [
  "api-client",
  "axum",
+ "base64",
  "domain",
  "env_logger",
  "log",
