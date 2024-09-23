@@ -37,6 +37,7 @@ impl Gpt {
             model: "dall-e-2".to_string(),
             prompt,
             n: 1,
+            // size: "1024x1024".to_string(),
             size: "256x256".to_string(),
             response_format: Some(GenImageResponseFormat::B64Json),
         };
