@@ -1,5 +1,5 @@
-use api_client::gpt::Gpt;
-use api_client::{line, line::Line};
+use service::gpt::Gpt;
+use service::{line, line::Line};
 
 #[derive(Clone)]
 pub struct App {

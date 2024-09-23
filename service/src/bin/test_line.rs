@@ -1,4 +1,4 @@
-use api_client::line::Line;
+use service::line::Line;
 
 #[tokio::main]
 async fn main() {

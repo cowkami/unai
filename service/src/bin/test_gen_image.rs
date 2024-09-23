@@ -1,4 +1,4 @@
-use api_client::gpt::Gpt;
+use service::gpt::Gpt;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use image::ImageReader;
 
