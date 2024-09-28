@@ -1,3 +1,4 @@
+use domain::user::{User, UserDemand};
 use service::gpt::Gpt;
 use service::{line, line::Line};
 
@@ -43,12 +44,16 @@ impl App {
 
         println!("User demand: {:#?}", user_demand);
 
-        // send chat
-        let bot_response = self
-            .llm_client
-            .chat(user_message.text)
-            .await
-            .expect("Failed to send chat to OpenAI API");
+        // save the image to local storage
+        // make the preview image to local storage
+        // the image send to GCS and return the URL
+        // send the URL to LINE as image message
+        let user_message_text = user_message.text.clone();
+        let bot_response = match user_demand {
+            UserDemand::Chat => self.chat(user_message_text).await,
+            UserDemand::CreateImage => self.create_image(user_message_text).await,
+        }
+        .expect("Failed to get bot response");
 
         log::info!("Bot message: {:#?}", bot_response);
 
@@ -59,5 +64,22 @@ impl App {
             .expect("Failed to send chat to LINE API");
 
         Ok(())
+    }
+
+    async fn chat(&self, chat: String) -> Result<String, &'static str> {
+        let bot_response = self
+            .llm_client
+            .chat(chat)
+            .await
+            .expect("Failed to get LLM response");
+        Ok(bot_response)
+    }
+
+    async fn create_image(&self, text: String) -> Result<String, &'static str> {
+        let image = self.llm_client.generate_image(text).await;
+
+        println!("Image created: {:#?}", image);
+
+        Ok("Image created".to_string())
     }
 }

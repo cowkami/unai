@@ -32,7 +32,7 @@ impl Gpt {
         response.json().await
     }
 
-    pub async fn generate_image(&self, prompt: String) -> Result<Vec<String>, reqwest::Error> {
+    pub async fn generate_image(&self, prompt: String) -> Result<Vec<String>, &'static str> {
         let request = GenerateImageRequest {
             model: "dall-e-2".to_string(),
             prompt,
@@ -47,9 +47,13 @@ impl Gpt {
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&request)
             .send()
-            .await?;
+            .await
+            .expect("Failed to send generate image request");
 
-        let response: GenerateImageResponse = response.json().await?;
+        let response: GenerateImageResponse = response
+            .json()
+            .await
+            .expect("Failed to parse GenerateImageResponse");
         let images: Vec<String> = response
             .data
             .into_iter()
@@ -59,7 +63,7 @@ impl Gpt {
         Ok(images)
     }
 
-    pub async fn chat(&self, chat: String) -> Result<String, reqwest::Error> {
+    pub async fn chat(&self, chat: String) -> Result<String, &'static str> {
         let request = CompletionsRequest {
             model: "gpt-4o".to_string(),
             messages: vec![Message {
@@ -69,7 +73,10 @@ impl Gpt {
             temperature: Some(0.7),
             response_format: None,
         };
-        let response = self.completions(request).await?;
+        let response = self
+            .completions(request)
+            .await
+            .expect("Failed to get chat response");
 
         let text = response.choices[0].message.content.clone();
         Ok(text)
