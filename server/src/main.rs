@@ -1,6 +1,5 @@
 mod app;
 
-use service::line;
 use app::App;
 use axum::{
     extract::Extension,
@@ -8,6 +7,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use service::line;
 
 #[tokio::main]
 async fn main() -> Result<(), &'static str> {
@@ -15,7 +15,7 @@ async fn main() -> Result<(), &'static str> {
     env_logger::init();
 
     // initialize app
-    let app = App::new().expect("Failed to initialize app");
+    let app = App::new().await.expect("Failed to initialize app");
 
     // build our application with a single route
     let router = Router::new()

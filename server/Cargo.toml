@@ -13,3 +13,4 @@ tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
 
 service = { path = "../service" }
 domain = { path = "../domain" }
+futures = "0.3.30"
