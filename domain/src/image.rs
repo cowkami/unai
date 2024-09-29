@@ -61,7 +61,7 @@ impl Image {
     }
 
     pub fn to_preview(&self) -> Self {
-        let preview = self.resize(256, 256);
+        let preview = self.resize(512, 512);
         Self {
             id: preview.id,
             path: preview.path,

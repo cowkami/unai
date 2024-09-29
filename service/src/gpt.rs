@@ -8,13 +8,20 @@ use std::env;
 #[derive(Clone)]
 pub struct Gpt {
     api_key: String,
+    image_config: ImageConfig,
 }
 
 impl Gpt {
     pub fn new() -> Result<Self, &'static str> {
         let api_key =
             env::var("OPENAI_API_KEY").expect("Please set the OPENAI_API_KEY environment variable");
-        Ok(Self { api_key })
+
+        let image_config = ImageConfig::new().expect("Failed to create ImageConfig");
+
+        Ok(Self {
+            api_key,
+            image_config,
+        })
     }
 
     pub async fn completions(
@@ -34,11 +41,10 @@ impl Gpt {
 
     pub async fn generate_image(&self, prompt: String) -> Result<Vec<String>, &'static str> {
         let request = GenerateImageRequest {
-            model: "dall-e-2".to_string(),
+            model: self.image_config.model.to_string(),
             prompt,
-            n: 1,
-            // size: "1024x1024".to_string(),
-            size: "256x256".to_string(),
+            n: self.image_config.count,
+            size: self.image_config.size.to_num(),
             response_format: Some(GenImageResponseFormat::B64Json),
         };
         let client = reqwest::Client::new();
@@ -124,5 +130,98 @@ impl Gpt {
         let user_demand = UserDemand::try_from(user_demand.user_demand).unwrap();
 
         Ok(user_demand)
+    }
+}
+
+#[derive(Clone)]
+struct ImageConfig {
+    model: ImageModel,
+    size: ImageSize,
+    count: i64,
+}
+
+impl ImageConfig {
+    fn new() -> Result<Self, &'static str> {
+        let image_model = env::var("GENERATE_IMAGE_MODEL")
+            .expect("Please set the IMAGE_MODEL environment variable")
+            .try_into()?;
+
+        let image_size = env::var("GENERATE_IMAGE_SIZE")
+            .expect("Please set the IMAGE_SIZE environment variable")
+            .try_into()?;
+
+        let image_count = env::var("GENERATE_IMAGE_COUNT")
+            .expect("Please set the N_IMAGE environment variable")
+            .parse()
+            .expect("Failed to parse N_IMAGE");
+
+        Ok(ImageConfig {
+            model: image_model,
+            size: image_size,
+            count: image_count,
+        })
+    }
+}
+
+#[derive(Clone)]
+enum ImageModel {
+    DallE2,
+    DallE3,
+}
+
+impl TryInto<ImageModel> for String {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<ImageModel, Self::Error> {
+        match self.as_str() {
+            "dall-e-2" => Ok(ImageModel::DallE2),
+            "dall-e-3" => Ok(ImageModel::DallE3),
+            _ => Err("Invalid image model"),
+        }
+    }
+}
+
+impl ToString for ImageModel {
+    fn to_string(&self) -> String {
+        match self {
+            Self::DallE2 => "dall-e-2".to_string(),
+            Self::DallE3 => "dall-e-3".to_string(),
+        }
+    }
+}
+
+#[derive(Clone)]
+enum ImageSize {
+    Small,     // 256x256
+    Medium,    // 512x512
+    Large,     // 1024x1024
+    Landscape, // 1792x1024
+    Portrait,  // 1024x1792
+}
+
+impl ImageSize {
+    fn to_num(&self) -> String {
+        match self {
+            Self::Small => "256x256".to_string(),
+            Self::Medium => "512x512".to_string(),
+            Self::Large => "1024x1024".to_string(),
+            Self::Landscape => "1792x1024".to_string(),
+            Self::Portrait => "1024x1792".to_string(),
+        }
+    }
+}
+
+impl TryInto<ImageSize> for String {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<ImageSize, Self::Error> {
+        Ok(match self.as_str() {
+            "small" => ImageSize::Small,
+            "medium" => ImageSize::Medium,
+            "large" => ImageSize::Large,
+            "landscape" => ImageSize::Landscape,
+            "portrait" => ImageSize::Portrait,
+            _ => panic!("Invalid image size"),
+        })
     }
 }
