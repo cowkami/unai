@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 base64 = "0.22.1"
 image = "0.25.2"
+uuid = { version = "1.10.0", features = [
+    "v4",
+    "fast-rng",
+    "macro-diagnostics",
+] }
