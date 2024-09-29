@@ -1,3 +1,4 @@
 .env
+config/google_service_account_key.json
 debug/
 target/
