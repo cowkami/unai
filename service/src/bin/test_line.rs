@@ -1,12 +1,21 @@
-use service::line::Line;
+use service::line::{schema::Message as LineMessage, Line};
 
 #[tokio::main]
 async fn main() {
+    let text_message = LineMessage::text(
+        "Hello, how are you?".to_string(),
+        Some("528093400332239266".to_string()),
+    );
+    let image_message = LineMessage::image(
+        "https://placehold.jp/300x200.png".to_string(),
+        "https://placehold.jp/300x200.png".to_string(),
+    );
+    println!("Image message: {:#?}", image_message);
     let message_client = Line::new().expect("Failed to initialize Line API client");
     let response = message_client
-        .reply(
-            "Hello, how are you?".to_string(),
-            "13912a8f297d4fa5bea46f5bcd03727a".to_string(),
+        .send_messages(
+            "U4687945e6cfdd665f019b7c0e40cf12b".to_string(),
+            vec![text_message, image_message],
         )
         .await;
 

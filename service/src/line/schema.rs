@@ -9,6 +9,13 @@ pub struct ReplyMessage {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct PushMessage {
+    pub to: String,
+    pub messages: Vec<Message>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct WebhookEvent {
     pub destination: String,
     pub events: Vec<Event>,
@@ -34,12 +41,46 @@ pub enum EventType {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase", untagged)]
+pub enum Message {
+    Text(TextMessage),
+    Image(ImageMessage),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct Message {
+pub struct TextMessage {
     pub id: Option<String>,
     pub r#type: String,
     pub text: String,
     pub quote_token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageMessage {
+    pub r#type: String,
+    pub original_content_url: String,
+    pub preview_image_url: String,
+}
+
+impl Message {
+    pub fn text(text: String, quote_token: Option<String>) -> Self {
+        Self::Text(TextMessage {
+            id: None,
+            r#type: "text".to_string(),
+            text,
+            quote_token,
+        })
+    }
+
+    pub fn image(original_content_url: String, preview_image_url: String) -> Self {
+        Self::Image(ImageMessage {
+            r#type: "image".to_string(),
+            original_content_url,
+            preview_image_url,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

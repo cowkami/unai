@@ -54,6 +54,7 @@ impl Gpt {
             .json()
             .await
             .expect("Failed to parse GenerateImageResponse");
+
         let images: Vec<String> = response
             .data
             .into_iter()

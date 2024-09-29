@@ -4,7 +4,10 @@ use domain::{
     message::{Actor, Message},
     user::User,
 };
-use schema::{Event, EventType, LoadingStart, Message as LineMessage, ReplyMessage, WebhookEvent};
+use schema::{
+    Event, EventType, LoadingStart, Message as LineMessage, PushMessage, ReplyMessage, TextMessage,
+    WebhookEvent,
+};
 
 #[derive(Clone)]
 pub struct Line {
@@ -40,17 +43,20 @@ impl Line {
     }
 
     fn extract_message(&self, event: Event) -> Message {
-        Message {
-            from: Actor::User(User {
-                id: event.source.user_id,
-            }),
-            to: Actor::Bot,
-            text: event.message.text,
-            reply_token: Some(event.reply_token),
+        match event.message {
+            schema::Message::Text(TextMessage { text, .. }) => Message {
+                from: Actor::User(User {
+                    id: event.source.user_id,
+                }),
+                to: Actor::Bot,
+                text,
+                reply_token: Some(event.reply_token),
+            },
+            schema::Message::Image(_) => unimplemented!(),
         }
     }
 
-    pub async fn show_loading(&self) -> Result<(), reqwest::Error> {
+    pub async fn show_loading(&self) -> Result<(), &'static str> {
         let client = reqwest::Client::new();
         client
             .post("https://api.line.me/v2/bot/chat/loading/start")
@@ -64,14 +70,19 @@ impl Line {
                 loading_seconds: 60, // maximum 60 seconds
             })
             .send()
-            .await?;
+            .await
+            .expect("Failed to show loading to user");
 
         Ok(())
     }
 
-    pub async fn reply(&self, chat: String, reply_token: String) -> Result<(), reqwest::Error> {
+    pub async fn reply_messages(
+        &self,
+        messages: Vec<LineMessage>,
+        reply_token: String,
+    ) -> Result<reqwest::Response, &'static str> {
         let client = reqwest::Client::new();
-        client
+        let response = client
             .post("https://api.line.me/v2/bot/message/reply")
             .header("Content-Type", "application/json")
             .header(
@@ -80,16 +91,36 @@ impl Line {
             )
             .json(&ReplyMessage {
                 reply_token,
-                messages: vec![LineMessage {
-                    r#type: "text".to_string(),
-                    text: chat,
-                    id: None,
-                    quote_token: None,
-                }],
+                messages,
             })
             .send()
-            .await?;
+            .await
+            .expect("Failed to send chat to LINE API");
 
-        Ok(())
+        Ok(response)
+    }
+
+    pub async fn send_messages(
+        &self,
+        to_user_id: String,
+        messages: Vec<LineMessage>,
+    ) -> Result<reqwest::Response, &'static str> {
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.line.me/v2/bot/message/push")
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.channel_access_token),
+            )
+            .json(&PushMessage {
+                to: to_user_id,
+                messages,
+            })
+            .send()
+            .await
+            .expect("Failed to send chat to LINE API");
+
+        Ok(response)
     }
 }

@@ -2,7 +2,11 @@ use domain::image::Image;
 use domain::message::Message;
 use domain::user::UserDemand;
 use futures::stream::{self, StreamExt};
-use service::{gcs::Gcs, gpt::Gpt, line, line::Line};
+use service::{
+    gcs::Gcs,
+    gpt::Gpt,
+    line::{self, schema::Message as LineMessage, Line},
+};
 
 #[derive(Clone)]
 pub struct App {
@@ -46,10 +50,12 @@ impl App {
         log::info!("Bot message: {:#?}", bot_response);
 
         // reply chat to LINE
-        self.message_client
-            .reply(bot_response, user_message.reply_token.unwrap())
+        let message_api_response = self
+            .message_client
+            .reply_messages(bot_response, user_message.reply_token.unwrap())
             .await
             .expect("Failed to send chat to LINE API");
+        log::trace!("Message API response: {:#?}", message_api_response);
 
         Ok(())
     }
@@ -85,26 +91,22 @@ impl App {
         Ok(user_demand)
     }
 
-    async fn chat(&self, chat: String) -> Result<String, &'static str> {
+    async fn chat(&self, chat: String) -> Result<Vec<LineMessage>, &'static str> {
         let bot_response = self
             .llm_client
             .chat(chat)
             .await
             .expect("Failed to get LLM response");
 
-        Ok(bot_response)
+        Ok(vec![LineMessage::text(bot_response, None)])
     }
 
-    async fn create_image(&self, text: String) -> Result<String, &'static str> {
+    async fn create_image(&self, text: String) -> Result<Vec<LineMessage>, &'static str> {
         let base64_images = self
             .llm_client
             .generate_image(text)
             .await
             .expect("Failed to generate image");
-        log::trace!(
-            "Image length size: {:#?}",
-            base64_images.iter().map(|image| image.len())
-        );
 
         let images: Vec<Image> = base64_images
             .into_iter()
@@ -125,7 +127,6 @@ impl App {
             })
             .collect::<Vec<String>>()
             .await;
-        log::trace!("Image URL: {:#?}", image_urls);
 
         let preview_urls = stream::iter(previews)
             .then(|img| async {
@@ -135,10 +136,12 @@ impl App {
             })
             .collect::<Vec<String>>()
             .await;
-        log::trace!("Image URL: {:#?}", preview_urls);
 
-        // Ok((image_urls, preview_urls))
-        Ok(image_urls[0].clone())
+        Ok(image_urls
+            .into_iter()
+            .zip(preview_urls.into_iter())
+            .map(|(original, preview)| LineMessage::image(original, preview))
+            .collect())
     }
 
     async fn upload_image(&self, image: Image) -> Result<String, &'static str> {
