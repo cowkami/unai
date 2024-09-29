@@ -1,5 +1,8 @@
 # unai
 
+Unseo AI, so called, UNAI.
+It is actually LLM chatbot as a LINE bot.
+
 Set environment variables into `.env` like `.env.example`
 ```
 .env
