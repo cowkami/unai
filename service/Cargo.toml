@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-reqwest = { version = "0.12.7", default_features = false, features = [
+reqwest = { version = "0.12.7", default-features = false, features = [
     "json",
     "rustls-tls",
 ] }
@@ -13,6 +13,9 @@ serde_json = "1.0.128"
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
 base64 = "0.22.1"
 image = "0.25.2"
-google-cloud-storage = "0.22.1"
+google-cloud-storage = { version = "0.22.1", default-features = false, features = [
+    "rustls-tls",
+    "auth",
+] }
 
 domain = { path = "../domain" }

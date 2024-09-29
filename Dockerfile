@@ -1,9 +1,9 @@
 FROM rust:1.80.1-slim as builder
-RUN apt-get update; \
-    apt-get install -y --no-install-recommends \
-    libssl-dev pkg-config build-essential;
 WORKDIR /app
 COPY . .
-RUN cargo build --release
+RUN cargo build --release 
 
-CMD [ "/app/target/release/server" ]
+FROM debian:stable-slim
+COPY --from=builder /app/config/google_service_account_key.json /config/
+COPY --from=builder /app/target/release/server .
+CMD [ "/server" ]
