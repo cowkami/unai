@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use service::line;
+use api_client::line;
 
 #[tokio::main]
 async fn main() -> Result<(), &'static str> {

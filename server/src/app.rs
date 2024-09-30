@@ -2,7 +2,7 @@ use domain::image::Image;
 use domain::message::Message;
 use domain::user::UserDemand;
 use futures::stream::{self, StreamExt};
-use service::{
+use api_client::{
     gcs::Gcs,
     gpt::Gpt,
     line::{self, schema::Message as LineMessage, Line},
