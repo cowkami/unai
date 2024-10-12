@@ -1,34 +1,31 @@
+use api_client::{
+    gcs::FileStorageClient,
+    gpt::LlmClient,
+    line::{self, schema::Message as LineMessage, MessageClient},
+};
 use domain::image::Image;
 use domain::message::Message;
 use domain::user::UserDemand;
 use futures::stream::{self, StreamExt};
-use api_client::{
-    gcs::Gcs,
-    gpt::Gpt,
-    line::{self, schema::Message as LineMessage, Line},
-};
 
 #[derive(Clone)]
-pub struct App {
-    pub llm_client: Gpt,
-    pub message_client: Line,
-    pub storage_client: Gcs,
+pub struct App<L, M, F>
+where
+    L: LlmClient,
+    M: MessageClient,
+    F: FileStorageClient,
+{
+    pub llm_client: L,
+    pub message_client: M,
+    pub storage_client: F,
 }
 
-impl App {
-    pub async fn new() -> Result<Self, &'static str> {
-        let llm_client = Gpt::new().expect("Failed to initialize OpenAI API client");
-        let message_client = Line::new().expect("Failed to initialize LINE client");
-        let storage_client = Gcs::new()
-            .await
-            .expect("Failed to initialize Cloud Storage client");
-        Ok(Self {
-            llm_client,
-            message_client,
-            storage_client,
-        })
-    }
-
+impl<L, M, F> App<L, M, F>
+where
+    L: LlmClient,
+    M: MessageClient,
+    F: FileStorageClient,
+{
     pub async fn conversation(
         &self,
         payload: line::schema::WebhookEvent,
@@ -163,5 +160,25 @@ impl App {
         log::trace!("Download URL: {:#?}", download_url);
 
         Ok(download_url)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use api_client::{gcs::MockFileStorageClient, gpt::MockLlmClient, line::MockMessageClient};
+
+    #[tokio::test]
+    async fn test_app() {
+        let llm_client = MockLlmClient::new();
+        let message_client = MockMessageClient::new();
+        let storage_client = MockFileStorageClient::new();
+
+        let app = App {
+            llm_client,
+            message_client,
+            storage_client,
+        };
+        assert!(false);
     }
 }

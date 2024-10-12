@@ -1,4 +1,4 @@
-use api_client::gpt::Gpt;
+use api_client::gpt::{Gpt, LlmClient};
 use domain::image::Image;
 
 #[tokio::main]

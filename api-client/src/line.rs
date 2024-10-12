@@ -4,10 +4,28 @@ use domain::{
     message::{Actor, Message},
     user::User,
 };
+use mockall::automock;
 use schema::{
     Event, EventType, LoadingStart, Message as LineMessage, PushMessage, ReplyMessage, TextMessage,
     WebhookEvent,
 };
+
+#[automock]
+pub trait MessageClient {
+    fn get_user_message(&self, payload: WebhookEvent) -> Result<Message, &'static str>;
+    fn extract_message(&self, event: Event) -> Message;
+    async fn show_loading(&self) -> Result<(), &'static str>;
+    async fn reply_messages(
+        &self,
+        messages: Vec<LineMessage>,
+        reply_token: String,
+    ) -> Result<reqwest::Response, &'static str>;
+    async fn send_messages(
+        &self,
+        to_user_id: String,
+        messages: Vec<LineMessage>,
+    ) -> Result<reqwest::Response, &'static str>;
+}
 
 #[derive(Clone)]
 pub struct Line {
@@ -27,8 +45,10 @@ impl Line {
             bot_user_id,
         })
     }
+}
 
-    pub fn get_user_message(&self, payload: WebhookEvent) -> Result<Message, &'static str> {
+impl MessageClient for Line {
+    fn get_user_message(&self, payload: WebhookEvent) -> Result<Message, &'static str> {
         let message_event = payload
             .events
             .into_iter()
@@ -56,7 +76,7 @@ impl Line {
         }
     }
 
-    pub async fn show_loading(&self) -> Result<(), &'static str> {
+    async fn show_loading(&self) -> Result<(), &'static str> {
         let client = reqwest::Client::new();
         client
             .post("https://api.line.me/v2/bot/chat/loading/start")
@@ -76,7 +96,7 @@ impl Line {
         Ok(())
     }
 
-    pub async fn reply_messages(
+    async fn reply_messages(
         &self,
         messages: Vec<LineMessage>,
         reply_token: String,
@@ -100,7 +120,7 @@ impl Line {
         Ok(response)
     }
 
-    pub async fn send_messages(
+    async fn send_messages(
         &self,
         to_user_id: String,
         messages: Vec<LineMessage>,

@@ -1,9 +1,21 @@
 pub mod schema;
 
 use domain::user::UserDemand;
+use mockall::automock;
 use schema::*;
 use serde_json::json;
 use std::env;
+
+#[automock]
+pub trait LlmClient {
+    async fn completions(
+        &self,
+        request: CompletionsRequest,
+    ) -> Result<CompletionsResponse, reqwest::Error>;
+    async fn generate_image(&self, prompt: String) -> Result<Vec<String>, &'static str>;
+    async fn chat(&self, chat: String) -> Result<String, &'static str>;
+    async fn detect_demand(&self, chat: String) -> Result<UserDemand, reqwest::Error>;
+}
 
 #[derive(Clone)]
 pub struct Gpt {
@@ -23,8 +35,10 @@ impl Gpt {
             image_config,
         })
     }
+}
 
-    pub async fn completions(
+impl LlmClient for Gpt {
+    async fn completions(
         &self,
         request: CompletionsRequest,
     ) -> Result<CompletionsResponse, reqwest::Error> {
@@ -39,7 +53,7 @@ impl Gpt {
         response.json().await
     }
 
-    pub async fn generate_image(&self, prompt: String) -> Result<Vec<String>, &'static str> {
+    async fn generate_image(&self, prompt: String) -> Result<Vec<String>, &'static str> {
         let request = GenerateImageRequest {
             model: self.image_config.model.to_string(),
             prompt,
@@ -70,7 +84,7 @@ impl Gpt {
         Ok(images)
     }
 
-    pub async fn chat(&self, chat: String) -> Result<String, &'static str> {
+    async fn chat(&self, chat: String) -> Result<String, &'static str> {
         let request = CompletionsRequest {
             model: "gpt-4o".to_string(),
             messages: vec![Message {
@@ -89,7 +103,7 @@ impl Gpt {
         Ok(text)
     }
 
-    pub async fn detect_demand(&self, chat: String) -> Result<UserDemand, reqwest::Error> {
+    async fn detect_demand(&self, chat: String) -> Result<UserDemand, reqwest::Error> {
         let response_format = ResponseFormat::new(
             "user_demand".to_string(),
             json!({

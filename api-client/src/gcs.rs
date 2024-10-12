@@ -4,7 +4,14 @@ use google_cloud_storage::{
     http::objects::upload::{Media, UploadObjectRequest, UploadType},
     sign::{SignedURLMethod, SignedURLOptions},
 };
+use mockall::automock;
 use std::env;
+
+#[automock]
+pub trait FileStorageClient {
+    async fn upload(&self, file_name: String, data: Vec<u8>) -> Result<GcsObject, &'static str>;
+    async fn get_url(&self, uploaded: GcsObject) -> Result<String, &'static str>;
+}
 
 #[derive(Clone)]
 pub struct Gcs {
@@ -33,12 +40,10 @@ impl Gcs {
 
         Ok(Gcs { client, bucket })
     }
+}
 
-    pub async fn upload(
-        &self,
-        file_name: String,
-        data: Vec<u8>,
-    ) -> Result<GcsObject, &'static str> {
+impl FileStorageClient for Gcs {
+    async fn upload(&self, file_name: String, data: Vec<u8>) -> Result<GcsObject, &'static str> {
         let upload_type = UploadType::Simple(Media::new(file_name));
         let uploaded = self
             .client
@@ -56,7 +61,7 @@ impl Gcs {
         Ok(uploaded)
     }
 
-    pub async fn get_url(&self, uploaded: GcsObject) -> Result<String, &'static str> {
+    async fn get_url(&self, uploaded: GcsObject) -> Result<String, &'static str> {
         let options = SignedURLOptions {
             method: SignedURLMethod::GET,
             expires: std::time::Duration::from_secs(600),

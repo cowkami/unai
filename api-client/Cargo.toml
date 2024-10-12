@@ -17,5 +17,6 @@ google-cloud-storage = { version = "0.22.1", default-features = false, features 
     "rustls-tls",
     "auth",
 ] }
+mockall = "0.13.0"
 
 domain = { path = "../domain" }

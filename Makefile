@@ -1,3 +1,6 @@
+test:
+	@cargo llvm-cov
+
 build:
 	@docker compose build
 

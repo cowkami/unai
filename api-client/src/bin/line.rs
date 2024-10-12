@@ -1,4 +1,4 @@
-use api_client::line::{schema::Message as LineMessage, Line};
+use api_client::line::{schema::Message as LineMessage, Line, MessageClient};
 
 #[tokio::main]
 async fn main() {
