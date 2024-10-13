@@ -48,6 +48,7 @@ impl App {
         log::info!("Context: {:#?}", context);
         log::info!("User demand: {:#?}", user_demand);
 
+        // add context to user message
         let user_message = Message {
             context: Some(context),
             ..user_message.clone()
@@ -58,8 +59,15 @@ impl App {
             .await
             .expect("Failed to save user message to DB");
 
+        let history = self
+            .message_repo
+            .list_by_user_id(user_message.user.id.clone(), 10)
+            .await?;
+
+        log::trace!("History: {:#?}", history);
+
         let bot_response = match user_demand {
-            UserDemand::Chat => self.chat(&user_message).await?,
+            UserDemand::Chat => self.chat(&user_message, None).await?,
             UserDemand::CreateImage => self.create_image(&user_message).await?,
         };
         log::info!("Bot message: {:#?}", bot_response);
@@ -113,7 +121,11 @@ impl App {
         Ok(user_demand)
     }
 
-    async fn chat(&self, message: &Message) -> Result<Vec<Message>, &'static str> {
+    async fn chat(
+        &self,
+        message: &Message,
+        history: Option<Vec<Message>>,
+    ) -> Result<Vec<Message>, &'static str> {
         let bot_response = self
             .llm_client
             .chat(message.text.clone())

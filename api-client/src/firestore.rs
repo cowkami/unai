@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use domain::{Actor, Message, MessageRepo};
+use domain::{Actor, Message, MessageRepo, User};
 use firestore::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -34,7 +34,7 @@ impl MessageRepo for MessageRepoImpl {
             .try_into()
             .expect("Invalid message to insert into DB");
 
-        let message: MessageDocument = self
+        let _: MessageDocument = self
             .db
             .fluent()
             .insert()
@@ -45,9 +45,30 @@ impl MessageRepo for MessageRepoImpl {
             .await
             .expect("Failed to save messages to Firestore");
 
-        println!("{:?}", message);
-
         Ok(())
+    }
+
+    async fn list_by_user_id(
+        &self,
+        user_id: String,
+        limit: u32,
+    ) -> Result<Vec<Message>, &'static str> {
+        let messages = self
+            .db
+            .fluent()
+            .select()
+            .from("messages")
+            .filter(|q| q.field("userId").eq(&user_id))
+            .limit(limit)
+            .obj::<MessageDocument>()
+            .query()
+            .await
+            .map_err(|_| "Failed to get messages from Firestore")?;
+
+        Ok(messages
+            .into_iter()
+            .map(|doc| doc.try_into().expect("Failed to parse message"))
+            .collect())
     }
 }
 
@@ -59,7 +80,9 @@ struct MessageDocument {
     text: String,
     context_id: String,
     context_name: String,
-    created_time: String,
+
+    #[serde(with = "firestore::serialize_as_timestamp")]
+    created_time: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -78,6 +101,15 @@ impl From<Actor> for Sender {
     }
 }
 
+impl From<Sender> for Actor {
+    fn from(sender: Sender) -> Self {
+        match sender {
+            Sender::User => Actor::User,
+            Sender::Bot => Actor::Bot,
+        }
+    }
+}
+
 impl TryFrom<Message> for MessageDocument {
     type Error = &'static str;
 
@@ -90,7 +122,24 @@ impl TryFrom<Message> for MessageDocument {
             text: message.text.clone(),
             context_id: context.id.to_string(),
             context_name: context.name,
-            created_time: Local::now().to_rfc3339(),
+            created_time: Utc::now(),
+        })
+    }
+}
+
+impl TryFrom<MessageDocument> for Message {
+    type Error = &'static str;
+
+    fn try_from(doc: MessageDocument) -> Result<Self, Self::Error> {
+        Ok(Message {
+            user: User {
+                id: doc.user_id.clone(),
+            },
+            from: doc.from.into(),
+            text: doc.text,
+            context: None,
+            reply_token: None,
+            image: None,
         })
     }
 }
