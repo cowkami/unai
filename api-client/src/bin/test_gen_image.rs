@@ -1,5 +1,5 @@
 use api_client::gpt::Gpt;
-use domain::image::Image;
+use domain::Image;
 
 #[tokio::main]
 async fn main() {

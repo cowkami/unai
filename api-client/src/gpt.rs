@@ -1,6 +1,6 @@
 pub mod schema;
 
-use domain::user::UserDemand;
+use domain::UserDemand;
 use schema::*;
 use serde_json::json;
 use std::env;

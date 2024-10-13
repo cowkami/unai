@@ -1,9 +1,6 @@
 pub mod schema;
 
-use domain::{
-    message::{Actor, Message},
-    user::User,
-};
+use domain::{Actor, Message, User};
 use schema::{
     Event, EventType, LoadingStart, Message as LineMessage, PushMessage, ReplyMessage, TextMessage,
     WebhookEvent,
@@ -51,6 +48,7 @@ impl Line {
                 to: Actor::Bot,
                 text,
                 reply_token: Some(event.reply_token),
+                context: None,
             },
             schema::Message::Image(_) => unimplemented!(),
         }

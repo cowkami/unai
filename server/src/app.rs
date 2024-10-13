@@ -1,18 +1,18 @@
-use domain::image::Image;
-use domain::message::Message;
-use domain::user::UserDemand;
-use futures::stream::{self, StreamExt};
 use api_client::{
+    firestore::MessageRepoImpl,
     gcs::Gcs,
     gpt::Gpt,
     line::{self, schema::Message as LineMessage, Line},
 };
+use domain::{Actor, Image, Message, MessageRepo, User, UserDemand};
+use futures::stream::{self, StreamExt};
 
 #[derive(Clone)]
 pub struct App {
     pub llm_client: Gpt,
     pub message_client: Line,
     pub storage_client: Gcs,
+    pub message_repo: MessageRepoImpl,
 }
 
 impl App {
@@ -22,10 +22,15 @@ impl App {
         let storage_client = Gcs::new()
             .await
             .expect("Failed to initialize Cloud Storage client");
+        let message_repo = MessageRepoImpl::new()
+            .await
+            .expect("Failed to initialize message repository");
+
         Ok(Self {
             llm_client,
             message_client,
             storage_client,
+            message_repo,
         })
     }
 
@@ -51,8 +56,7 @@ impl App {
 
         // reply chat to LINE
         let message_api_response = self
-            .message_client
-            .reply_messages(bot_response, user_message.reply_token.unwrap())
+            .reply(bot_response, user_message.reply_token)
             .await
             .expect("Failed to send chat to LINE API");
         log::trace!("Message API response: {:#?}", message_api_response);
@@ -163,5 +167,40 @@ impl App {
         log::trace!("Download URL: {:#?}", download_url);
 
         Ok(download_url)
+    }
+
+    async fn reply(
+        &self,
+        messages: Vec<LineMessage>,
+        reply_token: Option<String>,
+    ) -> Result<reqwest::Response, &'static str> {
+        // reply messages to messaging app API
+        let response = if let Some(reply_token) = reply_token {
+            self.message_client
+                .reply_messages(messages.clone(), reply_token)
+                .await
+        } else {
+            Err("Reply token is required")
+        };
+
+        // save messages to DB
+        let messages: Vec<Message> = messages
+            .into_iter()
+            .map(|msg| Message {
+                from: Actor::Bot,
+                to: Actor::User(User {
+                    id: "dummy".to_string(),
+                }),
+                text: match msg {
+                    LineMessage::Text(text) => text.text,
+                    LineMessage::Image(image) => image.preview_image_url,
+                },
+                context: None,
+                reply_token: None,
+            })
+            .collect();
+        self.message_repo.save(messages).await?;
+
+        response
     }
 }

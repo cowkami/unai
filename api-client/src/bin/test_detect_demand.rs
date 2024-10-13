@@ -1,5 +1,5 @@
 use api_client::gpt::Gpt;
-use domain::user::UserDemand;
+use domain::UserDemand;
 
 #[tokio::main]
 async fn main() {

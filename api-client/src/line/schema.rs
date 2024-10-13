@@ -40,14 +40,14 @@ pub enum EventType {
     Message,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum Message {
     Text(TextMessage),
     Image(ImageMessage),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TextMessage {
     pub id: Option<String>,
@@ -56,7 +56,7 @@ pub struct TextMessage {
     pub quote_token: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageMessage {
     pub r#type: String,
