@@ -4,7 +4,7 @@ use api_client::{
     gpt::Gpt,
     line::{self, Line},
 };
-use domain::{Actor, Image, ImageMessage, Message, MessageRepo, UserDemand};
+use domain::{Actor, Context, Image, ImageMessage, Message, MessageRepo, UserDemand};
 use futures::stream::{self, StreamExt};
 
 #[derive(Clone)]
@@ -44,8 +44,19 @@ impl App {
         self.show_loading_to_user().await?;
         log::trace!("Loading message sent to user");
 
-        let user_demand = self.detect_user_demand(&user_message).await?;
+        let (context, user_demand) = self.detect_user_demand(&user_message).await?;
+        log::info!("Context: {:#?}", context);
         log::info!("User demand: {:#?}", user_demand);
+
+        let user_message = Message {
+            context: Some(context),
+            ..user_message.clone()
+        };
+
+        // save user message to DB
+        self.save_messages(vec![user_message.clone()])
+            .await
+            .expect("Failed to save user message to DB");
 
         let bot_response = match user_demand {
             UserDemand::Chat => self.chat(&user_message).await?,
@@ -59,6 +70,11 @@ impl App {
             .await
             .expect("Failed to send chat to LINE API");
         log::trace!("Message API response: {:#?}", message_api_response);
+
+        // save bot response to DB
+        self.save_messages(bot_response)
+            .await
+            .expect("Failed to save bot response to DB");
 
         Ok(())
     }
@@ -84,7 +100,10 @@ impl App {
         Ok(())
     }
 
-    async fn detect_user_demand(&self, message: &Message) -> Result<UserDemand, &'static str> {
+    async fn detect_user_demand(
+        &self,
+        message: &Message,
+    ) -> Result<(Context, UserDemand), &'static str> {
         let user_demand = self
             .llm_client
             .detect_demand(message.text.clone())
@@ -201,9 +220,10 @@ impl App {
             Err("Reply token is required")
         };
 
-        // save messages to DB
-        self.message_repo.save(messages.clone()).await?;
-
         response
+    }
+
+    async fn save_messages(&self, messages: Vec<Message>) -> Result<(), &'static str> {
+        self.message_repo.save(messages).await
     }
 }

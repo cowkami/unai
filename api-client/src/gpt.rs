@@ -1,6 +1,6 @@
 pub mod schema;
 
-use domain::UserDemand;
+use domain::{Context, UserDemand};
 use schema::*;
 use serde_json::json;
 use std::env;
@@ -89,18 +89,24 @@ impl Gpt {
         Ok(text)
     }
 
-    pub async fn detect_demand(&self, chat: String) -> Result<UserDemand, reqwest::Error> {
+    pub async fn detect_demand(
+        &self,
+        chat: String,
+    ) -> Result<(Context, UserDemand), reqwest::Error> {
         let response_format = ResponseFormat::new(
             "user_demand".to_string(),
             json!({
                 "type": "object",
                 "properties": {
+                    "context": {
+                        "type": "string"
+                    },
                     "user_demand": {
                         "type": "string",
                         "enum": ["Chat", "CreateImage"],
-                    }
-                },
-                "required": ["user_demand"],
+                    },
+               },
+                "required": ["context", "user_demand"],
                 "additionalProperties": false,
             }),
         );
@@ -109,8 +115,9 @@ impl Gpt {
             messages: vec![
                 Message {
                     role: "system".to_string(),
-                    content: "You are an expert at detecting user demand. \
-                        Choose one appropriate label as the user demands from the following options:\n\
+                    content: "You are an expert at detecting user demand. \n\
+                        Describe the user's demand as a short title for context field.\n\
+                        AND Choose the most appropriate label for context from the following options:\n\
                         - Chat\n\
                         - CreateImage"
                         .to_string(),
@@ -126,10 +133,14 @@ impl Gpt {
 
         let response = self.completions(request).await?;
         let content = response.choices[0].message.content.clone();
-        let user_demand: schema::UserDemand = serde_json::from_str(&content).unwrap();
-        let user_demand = UserDemand::try_from(user_demand.user_demand).unwrap();
+        let user_demand: schema::UserDemand =
+            serde_json::from_str(&content).expect("Failed to parse user demand");
 
-        Ok(user_demand)
+        let context = Context::new(user_demand.context);
+        let user_demand =
+            UserDemand::try_from(user_demand.user_demand).expect("Invalid user demand");
+
+        Ok((context, user_demand))
     }
 }
 

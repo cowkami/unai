@@ -68,6 +68,7 @@ impl ResponseFormat {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserDemand {
+    pub context: String,
     pub user_demand: String,
 }
 
