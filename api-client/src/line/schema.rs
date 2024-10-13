@@ -56,6 +56,25 @@ pub struct TextMessage {
     pub quote_token: Option<String>,
 }
 
+impl From<domain::Message> for Message {
+    fn from(message: domain::Message) -> Self {
+        if let Some(image) = message.image {
+            Self::Image(ImageMessage {
+                r#type: "image".to_string(),
+                original_content_url: image.url,
+                preview_image_url: image.preview_url,
+            })
+        } else {
+            Self::Text(TextMessage {
+                id: None,
+                r#type: "text".to_string(),
+                text: message.text,
+                quote_token: None,
+            })
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageMessage {

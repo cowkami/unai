@@ -72,7 +72,7 @@ enum Sender {
 impl From<Actor> for Sender {
     fn from(actor: Actor) -> Self {
         match actor {
-            Actor::User(_) => Self::User,
+            Actor::User => Self::User,
             Actor::Bot => Self::Bot,
         }
     }
@@ -82,29 +82,15 @@ impl TryFrom<Message> for MessageDocument {
     type Error = &'static str;
 
     fn try_from(message: Message) -> Result<Self, Self::Error> {
-        let user_id = match message.clone() {
-            Message {
-                from: Actor::User(user),
-                to: Actor::Bot,
-                ..
-            } => user.id,
-            Message {
-                from: Actor::Bot,
-                to: Actor::User(user),
-                ..
-            } => user.id,
-            _ => return Err("Invalid message"),
-        };
-
         let context = message.context.expect("Context is required");
 
         Ok(Self {
-            user_id,
+            user_id: message.user.id,
             from: message.from.into(),
-            text: message.text,
+            text: message.text.clone(),
             context_id: context.id.to_string(),
             context_name: context.name,
-            created_time: Utc::now().to_rfc3339(),
+            created_time: Local::now().to_rfc3339(),
         })
     }
 }

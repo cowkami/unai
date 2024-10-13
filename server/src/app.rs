@@ -2,9 +2,9 @@ use api_client::{
     firestore::MessageRepoImpl,
     gcs::Gcs,
     gpt::Gpt,
-    line::{self, schema::Message as LineMessage, Line},
+    line::{self, Line},
 };
-use domain::{Actor, Context, Image, Message, MessageRepo, User, UserDemand};
+use domain::{Actor, Image, ImageMessage, Message, MessageRepo, UserDemand};
 use futures::stream::{self, StreamExt};
 
 #[derive(Clone)]
@@ -44,19 +44,18 @@ impl App {
         self.show_loading_to_user().await?;
         log::trace!("Loading message sent to user");
 
-        let user_demand = self.detect_user_demand(user_message.text.clone()).await?;
+        let user_demand = self.detect_user_demand(&user_message).await?;
         log::info!("User demand: {:#?}", user_demand);
 
-        let user_message_text = user_message.text.clone();
         let bot_response = match user_demand {
-            UserDemand::Chat => self.chat(user_message_text).await?,
-            UserDemand::CreateImage => self.create_image(user_message_text).await?,
+            UserDemand::Chat => self.chat(&user_message).await?,
+            UserDemand::CreateImage => self.create_image(&user_message).await?,
         };
         log::info!("Bot message: {:#?}", bot_response);
 
         // reply chat to LINE
         let message_api_response = self
-            .reply(bot_response, user_message.reply_token)
+            .reply(&bot_response, user_message.reply_token)
             .await
             .expect("Failed to send chat to LINE API");
         log::trace!("Message API response: {:#?}", message_api_response);
@@ -85,30 +84,34 @@ impl App {
         Ok(())
     }
 
-    async fn detect_user_demand(&self, chat: String) -> Result<UserDemand, &'static str> {
+    async fn detect_user_demand(&self, message: &Message) -> Result<UserDemand, &'static str> {
         let user_demand = self
             .llm_client
-            .detect_demand(chat)
+            .detect_demand(message.text.clone())
             .await
             .expect("Failed to detect user demand");
 
         Ok(user_demand)
     }
 
-    async fn chat(&self, chat: String) -> Result<Vec<LineMessage>, &'static str> {
+    async fn chat(&self, message: &Message) -> Result<Vec<Message>, &'static str> {
         let bot_response = self
             .llm_client
-            .chat(chat)
+            .chat(message.text.clone())
             .await
             .expect("Failed to get LLM response");
 
-        Ok(vec![LineMessage::text(bot_response, None)])
+        Ok(vec![Message {
+            from: Actor::Bot,
+            text: bot_response,
+            ..message.clone()
+        }])
     }
 
-    async fn create_image(&self, text: String) -> Result<Vec<LineMessage>, &'static str> {
+    async fn create_image(&self, message: &Message) -> Result<Vec<Message>, &'static str> {
         let base64_images = self
             .llm_client
-            .generate_image(text)
+            .generate_image(message.text.clone())
             .await
             .expect("Failed to generate image");
 
@@ -144,7 +147,16 @@ impl App {
         Ok(image_urls
             .into_iter()
             .zip(preview_urls.into_iter())
-            .map(|(original, preview)| LineMessage::image(original, preview))
+            .map(|(original, preview)| ImageMessage {
+                url: original,
+                preview_url: preview,
+            })
+            .map(|img_msg| Message {
+                from: Actor::Bot,
+                text: "".to_string(),
+                image: Some(img_msg),
+                ..message.clone()
+            })
             .collect())
     }
 
@@ -171,36 +183,26 @@ impl App {
 
     async fn reply(
         &self,
-        messages: Vec<LineMessage>,
+        messages: &Vec<Message>,
         reply_token: Option<String>,
     ) -> Result<reqwest::Response, &'static str> {
+        let line_messages = messages
+            .iter()
+            .cloned()
+            .map(|message| message.into())
+            .collect();
+
         // reply messages to messaging app API
         let response = if let Some(reply_token) = reply_token {
             self.message_client
-                .reply_messages(messages.clone(), reply_token)
+                .reply_messages(line_messages, reply_token)
                 .await
         } else {
             Err("Reply token is required")
         };
 
         // save messages to DB
-        let messages: Vec<Message> = messages
-            .into_iter()
-            .map(|msg| Message {
-                from: Actor::Bot,
-                to: Actor::User(User {
-                    id: "dummy".to_string(),
-                }),
-                text: match msg {
-                    LineMessage::Text(text) => text.text,
-                    LineMessage::Image(image) => image.preview_image_url,
-                },
-                context: Some(Context::new("greeting".to_string())),
-                reply_token: None,
-            })
-            .collect();
-
-        self.message_repo.save(messages).await?;
+        self.message_repo.save(messages.clone()).await?;
 
         response
     }

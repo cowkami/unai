@@ -1,4 +1,4 @@
-use crate::context::{Context, ContextId};
+use crate::context::Context;
 use crate::message::Message;
 use mockall::automock;
 use std::future::Future;

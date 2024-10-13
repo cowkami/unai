@@ -42,13 +42,14 @@ impl Line {
     fn extract_message(&self, event: Event) -> Message {
         match event.message {
             schema::Message::Text(TextMessage { text, .. }) => Message {
-                from: Actor::User(User {
+                user: User {
                     id: event.source.user_id,
-                }),
-                to: Actor::Bot,
+                },
+                from: Actor::User,
                 text,
                 reply_token: Some(event.reply_token),
                 context: None,
+                image: None,
             },
             schema::Message::Image(_) => unimplemented!(),
         }
