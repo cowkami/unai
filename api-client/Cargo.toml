@@ -17,5 +17,8 @@ google-cloud-storage = { version = "0.22.1", default-features = false, features 
     "rustls-tls",
     "auth",
 ] }
+uuid = "1.10.0"
+chrono = "0.4.38"
+firestore = "0.43.1"
 
 domain = { path = "../domain" }

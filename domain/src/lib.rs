@@ -5,6 +5,7 @@ mod message;
 mod message_repo;
 mod user;
 
+pub use context::*;
 pub use context_repo::*;
 pub use image::*;
 pub use message::*;

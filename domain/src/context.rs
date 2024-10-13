@@ -2,8 +2,17 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Context {
-    id: ContextId,
-    name: String,
+    pub id: ContextId,
+    pub name: String,
+}
+
+impl Context {
+    pub fn new(name: String) -> Self {
+        Self {
+            id: ContextId::new(),
+            name,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

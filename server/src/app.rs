@@ -4,7 +4,7 @@ use api_client::{
     gpt::Gpt,
     line::{self, schema::Message as LineMessage, Line},
 };
-use domain::{Actor, Image, Message, MessageRepo, User, UserDemand};
+use domain::{Actor, Context, Image, Message, MessageRepo, User, UserDemand};
 use futures::stream::{self, StreamExt};
 
 #[derive(Clone)]
@@ -195,10 +195,11 @@ impl App {
                     LineMessage::Text(text) => text.text,
                     LineMessage::Image(image) => image.preview_image_url,
                 },
-                context: None,
+                context: Some(Context::new("greeting".to_string())),
                 reply_token: None,
             })
             .collect();
+
         self.message_repo.save(messages).await?;
 
         response
