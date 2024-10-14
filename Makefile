@@ -13,3 +13,7 @@ deploy: push
 		--image=asia-northeast1-docker.pkg.dev/unseo-chatbot/unai/chat-server:latest \
 		--region=asia-northeast1 \
 		--project=unseo-chatbot
+
+clean:
+	@trash target
+	@docker rmi unai-server:latest asia-northeast1-docker.pkg.dev/unseo-chatbot/unai/chat-server:latest
