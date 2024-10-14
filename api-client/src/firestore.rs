@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use domain::{Actor, Message, MessageRepo, User};
+use domain::{Actor, Message, MessageRepo, OrderDirection, User};
 use firestore::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -52,6 +52,7 @@ impl MessageRepo for MessageRepoImpl {
         &self,
         user_id: String,
         limit: u32,
+        order_direction: OrderDirection,
     ) -> Result<Vec<Message>, &'static str> {
         let messages = self
             .db
@@ -64,12 +65,14 @@ impl MessageRepo for MessageRepoImpl {
             .obj::<MessageDocument>()
             .query()
             .await
-            .map_err(|_| "Failed to get messages from Firestore")?;
+            .expect("Failed to get messages from Firestore");
 
-        Ok(messages
-            .into_iter()
-            .map(|doc| doc.try_into().expect("Failed to parse message"))
-            .collect())
+        match order_direction {
+            OrderDirection::Ascending => {
+                messages.into_iter().rev().map(TryInto::try_into).collect()
+            }
+            OrderDirection::Descending => messages.into_iter().map(TryInto::try_into).collect(),
+        }
     }
 }
 

@@ -59,19 +59,24 @@ impl App {
             .await
             .expect("Failed to save user message to DB");
 
-        let bot_response = match user_demand {
-            UserDemand::Chat => self.chat(&user_message, None).await?,
-            UserDemand::CreateImage => self.create_image(&user_message).await?,
-        };
-        log::info!("Bot message: {:#?}", bot_response);
-
         let history = self
             .message_repo
             // get the recent 10 messages(5 conversations)
-            .list_by_user_id(user_message.user.id.clone(), 10)
-            .await?;
-
+            .list_by_user_id(
+                user_message.user.id.clone(),
+                10,
+                // get latest message at the bottom
+                domain::OrderDirection::Ascending,
+            )
+            .await
+            .expect("Failed to get messages history");
         log::trace!("History: {:#?}", history);
+
+        let bot_response = match user_demand {
+            UserDemand::Chat => self.chat(&user_message, Some(history)).await?,
+            UserDemand::CreateImage => self.create_image(&user_message, Some(history)).await?,
+        };
+        log::info!("Bot message: {:#?}", bot_response);
 
         // reply chat to LINE
         let message_api_response = self
@@ -127,9 +132,10 @@ impl App {
         message: &Message,
         history: Option<Vec<Message>>,
     ) -> Result<Vec<Message>, &'static str> {
+        let messages = vec![history.unwrap_or(vec![]), vec![message.clone()]].concat();
         let bot_response = self
             .llm_client
-            .chat(message.text.clone())
+            .chat(messages)
             .await
             .expect("Failed to get LLM response");
 
@@ -140,10 +146,15 @@ impl App {
         }])
     }
 
-    async fn create_image(&self, message: &Message) -> Result<Vec<Message>, &'static str> {
+    async fn create_image(
+        &self,
+        message: &Message,
+        history: Option<Vec<Message>>,
+    ) -> Result<Vec<Message>, &'static str> {
+        let prompt = self.create_image_prompt(message, history).await?;
         let base64_images = self
             .llm_client
-            .generate_image(message.text.clone())
+            .generate_image(prompt)
             .await
             .expect("Failed to generate image");
 
@@ -190,6 +201,21 @@ impl App {
                 ..message.clone()
             })
             .collect())
+    }
+
+    async fn create_image_prompt(
+        &self,
+        message: &Message,
+        history: Option<Vec<Message>>,
+    ) -> Result<String, &'static str> {
+        let messages = if let Some(history) = history {
+            vec![history, vec![message.clone()]].concat()
+        } else {
+            vec![message.clone()]
+        };
+        let prompt = self.llm_client.create_image_prompt(messages).await?;
+
+        Ok(prompt)
     }
 
     async fn upload_image(&self, image: Image) -> Result<String, &'static str> {

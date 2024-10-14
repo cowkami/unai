@@ -9,7 +9,13 @@ pub trait MessageRepo {
         &self,
         user_id: String,
         limit: u32,
+        order_direction: OrderDirection,
     ) -> impl Future<Output = Result<Vec<Message>, &'static str>>;
+}
+
+pub enum OrderDirection {
+    Ascending,
+    Descending,
 }
 
 pub trait ProvideMessageRepo {

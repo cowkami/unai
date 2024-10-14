@@ -8,10 +8,27 @@ pub struct CompletionsRequest {
     pub response_format: Option<ResponseFormat>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
-    pub role: String,
+    pub role: Role,
     pub content: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+    System,
+    User,
+    Assistant,
+}
+
+impl From<domain::Actor> for Role {
+    fn from(actor: domain::Actor) -> Self {
+        match actor {
+            domain::Actor::User => Role::User,
+            domain::Actor::Bot => Role::Assistant,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

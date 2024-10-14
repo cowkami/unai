@@ -70,13 +70,18 @@ impl Gpt {
         Ok(images)
     }
 
-    pub async fn chat(&self, chat: String) -> Result<String, &'static str> {
+    pub async fn chat(&self, messages: Vec<domain::Message>) -> Result<String, &'static str> {
+        let messages = messages
+            .into_iter()
+            .map(|message| Message {
+                role: message.from.into(),
+                content: message.text,
+            })
+            .collect::<Vec<Message>>();
+
         let request = CompletionsRequest {
             model: "gpt-4o".to_string(),
-            messages: vec![Message {
-                role: "user".to_string(),
-                content: chat,
-            }],
+            messages,
             temperature: Some(0.7),
             response_format: None,
         };
@@ -114,7 +119,7 @@ impl Gpt {
             model: "gpt-4o-mini".to_string(),
             messages: vec![
                 Message {
-                    role: "system".to_string(),
+                    role: Role::System,
                     content: "You are an expert at detecting user demand. \n\
                         Describe the user's demand as a short title for context field.\n\
                         AND Choose the most appropriate label for context from the following options:\n\
@@ -123,7 +128,7 @@ impl Gpt {
                         .to_string(),
                 },
                 Message {
-                    role: "user".to_string(),
+                    role: Role::User,
                     content: chat,
                 },
             ],
@@ -141,6 +146,40 @@ impl Gpt {
             UserDemand::try_from(user_demand.user_demand).expect("Invalid user demand");
 
         Ok((context, user_demand))
+    }
+
+    pub async fn create_image_prompt(
+        &self,
+        messages: Vec<domain::Message>,
+    ) -> Result<String, &'static str> {
+        let system_message = Message {
+            role: Role::System,
+            content: "You are an expert at creating image prompts.
+            You will be given a chat history.
+            You need to create an image prompt mainly for the latest message.
+            But you can also use previous messages to create the prompt.
+            "
+            .to_string(),
+        };
+        let messages = messages
+            .into_iter()
+            .map(|message| Message {
+                role: message.from.into(),
+                content: message.text,
+            })
+            .collect::<Vec<Message>>();
+        let request = CompletionsRequest {
+            model: "gpt-4o-mini".to_string(),
+            messages: vec![vec![system_message], messages].concat(),
+            temperature: Some(0.7),
+            response_format: None,
+        };
+        let response = self
+            .completions(request)
+            .await
+            .expect("Failed to create image prompt");
+        let text = response.choices[0].message.content.clone();
+        Ok(text)
     }
 }
 
