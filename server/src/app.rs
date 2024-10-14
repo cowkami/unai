@@ -59,18 +59,19 @@ impl App {
             .await
             .expect("Failed to save user message to DB");
 
-        let history = self
-            .message_repo
-            .list_by_user_id(user_message.user.id.clone(), 10)
-            .await?;
-
-        log::trace!("History: {:#?}", history);
-
         let bot_response = match user_demand {
             UserDemand::Chat => self.chat(&user_message, None).await?,
             UserDemand::CreateImage => self.create_image(&user_message).await?,
         };
         log::info!("Bot message: {:#?}", bot_response);
+
+        let history = self
+            .message_repo
+            // get the recent 10 messages(5 conversations)
+            .list_by_user_id(user_message.user.id.clone(), 10)
+            .await?;
+
+        log::trace!("History: {:#?}", history);
 
         // reply chat to LINE
         let message_api_response = self

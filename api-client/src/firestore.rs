@@ -59,6 +59,7 @@ impl MessageRepo for MessageRepoImpl {
             .select()
             .from("messages")
             .filter(|q| q.field("userId").eq(&user_id))
+            .order_by([("createdTime", FirestoreQueryDirection::Descending)])
             .limit(limit)
             .obj::<MessageDocument>()
             .query()
