@@ -15,5 +15,5 @@ deploy: push
 		--project=unseo-chatbot
 
 clean:
-	@trash target
+	@rm -r target
 	@docker rmi unai-server:latest asia-northeast1-docker.pkg.dev/unseo-chatbot/unai/chat-server:latest
